@@ -10,7 +10,7 @@
 #import "VPRecordingModel.h"
 
 
-@interface VPRecordingController : UIViewController
+@interface VPRecordingController : UITableViewController
 
 @property(nonatomic, strong) NSString *uid;
 @property(nonatomic, strong) NSNumber *gid;

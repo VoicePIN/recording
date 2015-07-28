@@ -23,6 +23,7 @@
 
 /* Outlets */
 @property (weak, nonatomic) IBOutlet NSLayoutConstraint *verticalSpace;
+- (IBAction)birdHit:(id)sender;
 
 @property (weak, nonatomic) IBOutlet VPRecorderView *recordingView;
 @property (weak, nonatomic) IBOutlet VPRectIndicatorsView *signalStrengthIndicator;
@@ -32,7 +33,7 @@
 @property (weak, nonatomic) IBOutlet UITextField *phraseTextField;
 @property (weak, nonatomic) IBOutlet UILabel *phraseLabel;
 
-@property (weak, nonatomic) IBOutlet UITableView *tableView;
+//@property (weak, nonatomic) IBOutlet UITableView *tableView;
 
 @property (weak, nonatomic) IBOutlet UIView *leftBar;
 @property (weak, nonatomic) IBOutlet UIView *rightBar;
@@ -70,20 +71,43 @@
     UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tapTapped:)];
     [self.view addGestureRecognizer:tap];
     tap.delegate = self;
+    
+    self.refreshControl = [[UIRefreshControl alloc] init];
+    [self.refreshControl addTarget:self action:@selector(refresh:) forControlEvents:UIControlEventValueChanged];
+    
+    [self sizeHeaderToFit];
+}
+
+
+- (void)viewDidLayoutSubviews
+{
+    [super viewDidLayoutSubviews];
 }
 
 - (void)viewDidAppear:(BOOL)animated
 {
     [super viewDidAppear:animated];
-    [self.model updateDataForUid:self.uid gid:self.gid completion:^(NSError *error, BOOL dataUpdated, BOOL currentPhraseNoLongerValid) {
-        if(currentPhraseNoLongerValid) [self setSelectedPhrase:nil];
-        if(dataUpdated) [self.tableView reloadData];
-    }];
-    
+    [self refresh:nil];
 }
 
 
 #pragma mark - Helpers
+
+- (void)sizeHeaderToFit
+{
+    UIView *header = self.tableView.tableHeaderView;
+    
+    [header setNeedsLayout];
+    [header layoutIfNeeded];
+    
+    CGFloat height = [header systemLayoutSizeFittingSize:UILayoutFittingCompressedSize].height;
+    CGRect frame = header.frame;
+    
+    frame.size.height = height;
+    header.frame = frame;
+    
+    self.tableView.tableHeaderView = header;
+}
 
 
 - (NSAttributedString *) progressString
@@ -121,7 +145,6 @@
     if(!selectedPhrase)
     {
         self.phraseTextField.text = NSLocalizedString(@"Select phrase",@"");
-        [self.tableView reloadData];
     }
     else
     {
@@ -131,10 +154,9 @@
         self.phraseProgressLabel.attributedText = self.progressString;
         self.recordingView.numberOfElements = [selectedPhrase[@"recordings_needed"] integerValue];
         self.recordingView.numberOfActiveElements = self.model.recordings.count;
-        
-        
-        [self.tableView reloadData];
     }
+    [self.tableView reloadData];
+    [self sizeHeaderToFit];
 }
 
 
@@ -169,6 +191,21 @@
     [self.phraseTextField resignFirstResponder];
 }
 
+
+- (IBAction)refresh:(UIRefreshControl *) sender
+{
+    __weak typeof(self) weakSelf;
+    [self.model updateDataForUid:self.uid gid:self.gid completion:^(NSError *error, BOOL dataUpdated, BOOL currentPhraseNoLongerValid) {
+        if(currentPhraseNoLongerValid) [weakSelf setSelectedPhrase:nil];
+        if(dataUpdated)
+        {
+            [weakSelf.tableView reloadData];
+            [weakSelf sizeHeaderToFit];
+        }
+        [sender endRefreshing];
+    }];
+
+}
 
 #pragma mark - VPAudioManagerDelegate
 
@@ -208,7 +245,7 @@
             weakSelf.recordingView.numberOfElements = [weakSelf.model.selectedPhrase[@"recordings_needed"] integerValue];
             weakSelf.recordingView.numberOfActiveElements = weakSelf.model.recordings.count;
 
-            if([weakSelf.model phraseTrained:weakSelf.model.selectedPhrase])
+            if([weakSelf.model phraseJustTrained:weakSelf.model.selectedPhrase])
             {
                 
                 UIAlertView *av = [[VPAlertView alloc] initWithPhrase:weakSelf.model.selectedPhrase[@"phrase_text"] delegate:weakSelf showsNextPhraseButton:weakSelf.model.untrainedPhrases.count];
@@ -304,6 +341,13 @@
     return cell;
 }
 
+
+- (void)tableView:(UITableView *)tableView
+  willDisplayCell:(UITableViewCell *)cell
+forRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    [cell setBackgroundColor:[UIColor clearColor]];
+}
 
 #pragma mark - UIAlertViewDelegate
 
@@ -411,4 +455,8 @@
     [av show];
 }
 
+- (IBAction)birdHit:(id)sender
+{
+    [self.phraseTextField becomeFirstResponder];
+}
 @end
