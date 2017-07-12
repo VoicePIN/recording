@@ -302,7 +302,7 @@
         }
         
         self.recorderSettings = @{
-                                  AVSampleRateKey : @(8000.0),
+                                  AVSampleRateKey : @(16000.0),
                                   AVFormatIDKey:@(kAudioFormatLinearPCM),
                                   AVLinearPCMBitDepthKey: @(16),
                                   AVNumberOfChannelsKey:@1,
